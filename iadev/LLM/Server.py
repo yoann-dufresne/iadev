@@ -3,19 +3,42 @@ from openai import OpenAI
 from iadev.LLM.Model import Model
 from typing import Dict, List, Optional
 
+from iadev.LLM.Agent import Agent
 
 class Server:
     def __init__(self) -> None:
-        self.client: Optional[OpenAI] = None
+        self.models: Dict[str, Optional[Model]] = {x: None for x in self.get_model_names()}
 
     def connect(self) -> None:
         pass
 
     def get_model_names(self) -> List[str]:
+        return ["mistral-small-2503",
+                "llama3-3-70b",
+                "gemma-3-27b",
+                "qwen2-5-14b-coder"]
+
+    def get_default_model(self) -> Model:
         pass
 
     def get_model(self, model_name: str) -> Model:
         pass
+
+    def agent_from_yaml(self, yaml_file: str) -> Agent:
+        """
+        Loads a YAML file and returns the agent object.
+        :param yaml_file: The path to the YAML file.
+        :return: An Agent object corresponding to the description in the yaml file.
+        """
+        with open(yaml_file, 'r') as f:
+            data = yaml.safe_load(f)
+        if "name" not in data:
+            raise ValueError("Agent name is required in the YAML file.")
+        if "description" not in data:
+            raise ValueError("Agent description is required in the YAML file.")
+        model = self.get_model(data['model']) if 'model' in data else self.get_default_model()
+        agent = Agent(data['name'], model, data['description'])
+        return agent
 
 
 class PasteurLibreChat(Server):
@@ -23,33 +46,48 @@ class PasteurLibreChat(Server):
         super().__init__()
         self.name: str = "Pasteur Libre Chat"
         self.config: Optional[Dict[str, str]] = load_config("credentials/pasteur_librechat.yaml")
-        self.model: Dict[str, Optional[Model]] = {}
+        self.models: Dict[str, Optional[Model]] = {}
 
     def connect(self) -> None:
         if self.config is None:
             raise ValueError("Configuration could not be loaded.")
         self.client = OpenAI(api_key=self.config['token'], base_url=self.config['server'])
         for model_name in self.get_model_names():
-            self.model[model_name] = None
-
-    def get_model_names(self) -> List[str]:
-        return ["mistral-small-2503-local",
-                "llama3-3-70b-local",
-                "gemma-3-27b-local",
-                "qwen2-5-14b-coder-local"]
+            self.models[model_name] = None
+    
+    def get_default_model(self) -> Model:
+        return self.get_model("gemma-3-27b")
 
     def get_model(self, model_name: str) -> Model:
-        if model_name in self.model:
-            if self.model[model_name] is None:
+        if model_name in self.models:
+            if self.models[model_name] is None:
                 if self.client is None:
                     raise ValueError("Client is not connected.")
-                self.model[model_name] = Model(model_name, self.client)
-            return self.model[model_name]
+                self.models[model_name] = Model(f"{model_name}-local", self.client)
+            return self.models[model_name]
         else:
             raise ValueError(f"Model {model_name} not found.")
 
+class OllamaLocal(Server):
+    def __init__(self) -> None:
+        super().__init__()
+        self.name: str = "Ollama Local"
+        self.config: Optional[Dict[str, str]] = load_config("credentials/ollama.yaml")
 
-def load_config(file_path: str) -> Optional[Dict[str, str]]:
+    def connect(self) -> None:
+        for model_name in self.get_model_names():
+            self.models[model_name] = None
+
+    def get_model_names(self) -> List[str]:
+        return []
+
+    def get_model(self, model_name: str) -> Model:
+        if model_name in self.models:
+            return None
+        else:
+            raise ValueError(f"Model {model_name} not found.")
+
+def load_config(file_path: str) -> Dict[str, str]:
     """
     Loads a YAML config file and returns the data.
 
@@ -60,13 +98,6 @@ def load_config(file_path: str) -> Optional[Dict[str, str]]:
         A Python dictionary or list representing the YAML data.
         Returns None if an error occurs.
     """
-    try:
-        with open(file_path, 'r') as f:
-            data = yaml.safe_load(f)  # Use safe_load for security
-        return data
-    except FileNotFoundError:
-        print(f"Error: The file {file_path} was not found.")
-        return None
-    except yaml.YAMLError as e:
-        print(f"YAML Error: {e}")
-        return None
+    with open(file_path, 'r') as f:
+        data = yaml.safe_load(f)  # Use safe_load for security
+    return data

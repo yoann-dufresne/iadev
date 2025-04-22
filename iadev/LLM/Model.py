@@ -5,16 +5,17 @@ class Model:
         self.model_name = model_name
         self.client_api = client_api
 
-    def query(self, prompt: str) -> str:
+    def query(self, msgs: list[object]) -> str:
         """
-        Query the model with a given prompt.
-        :param prompt: The prompt to send to the model. """
-        response = self.client_api.Completion.create(
+        Query the model with a given list of messages.
+        :param messages: All the exchanges messages. """
+        # Call the OpenAI API to get the response
+        response = self.client_api.chat.completions.create(
             model=self.model_name,
-            prompt=prompt,
-            max_tokens=150
+            messages=msgs
         )
-        return response.choices[0].text.strip()
+        print(f"{response}")
+        return ""
 
     def __str__(self):
         return f"Model Name: {self.model_name}"
