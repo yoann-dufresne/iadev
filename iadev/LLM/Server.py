@@ -4,7 +4,7 @@ from sys import stderr
 from iadev.LLM.Model import Model
 from typing import Dict, List, Optional
 
-from iadev.LLM.Agent import Agent
+from iadev.LLM.Agent import Agent, Message
 
 class Server:
     def __init__(self) -> None:
@@ -19,8 +19,9 @@ class Server:
                 "gemma-3-27b",
                 "qwen2-5-14b-coder"]
 
+            
     def get_default_model(self) -> Model:
-        pass
+        return self.get_model(self.get_model_names()[0])
 
     def get_model(self, model_name: str) -> Model:
         pass
@@ -73,7 +74,49 @@ class PasteurLibreChat(Server):
         else:
             raise ValueError(f"Model {model_name} not found.")
         
+    def query_chat(self, model: Model, messages: List[Message]) -> tuple[Message, object]:
+        api_messages = [{"role": message.role, "content": message.content} for message in messages]
+        try:
+            response = self.client.chat.completions.create(
+                model=model.model_name,
+                messages=api_messages
+            )
+            
+            num_responses = len(response.choices)
+            if num_responses == 0:
+                raise ValueError("No response from the server.")
+            elif num_responses > 1:
+                print("Multiple responses received. Returning the first one.", file=stderr)
+            answer = response.choices[0]
+            return Message(answer['role'], answer['content']), response.usage['total_tokens']
+        except InternalServerError as e:
+            print(e, file=stderr)
+        return None, None
+
+class OllamaLocal(Server):
+    def __init__(self) -> None:
+        super().__init__()
+        self.name: str = "Ollama Local"
+        self.config: Optional[Dict[str, str]] = load_config("credentials/ollama.yaml")
+
+    def connect(self) -> None:
+        if self.config is None:
+            raise ValueError("Configuration could not be loaded.")
+        self.client = OpenAI(api_key="ollama", base_url=self.config['server'])
+        for model_name in self.get_model_names():
+            self.models[model_name] = None
+
+    def get_model_names(self) -> List[str]:
+        return ["llama3.2"]
+
+    def get_model(self, model_name: str) -> Model:
+        if model_name in self.models:
+            return None
+        else:
+            raise ValueError(f"Model {model_name} not found.")
+        
     def query_chat(self, model, messages):
+        raise NotImplementedError("Ollama Local server does not support chat completions.")
         try:
             response = self.client.chat.completions.create(
                 model=model.model_name,
@@ -83,25 +126,6 @@ class PasteurLibreChat(Server):
         except InternalServerError as e:
             print(e, file=stderr)
         return None
-
-class OllamaLocal(Server):
-    def __init__(self) -> None:
-        super().__init__()
-        self.name: str = "Ollama Local"
-        self.config: Optional[Dict[str, str]] = load_config("credentials/ollama.yaml")
-
-    def connect(self) -> None:
-        for model_name in self.get_model_names():
-            self.models[model_name] = None
-
-    def get_model_names(self) -> List[str]:
-        return []
-
-    def get_model(self, model_name: str) -> Model:
-        if model_name in self.models:
-            return None
-        else:
-            raise ValueError(f"Model {model_name} not found.")
 
 def load_config(file_path: str) -> Dict[str, str]:
     """
