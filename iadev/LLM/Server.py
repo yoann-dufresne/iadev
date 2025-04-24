@@ -1,5 +1,6 @@
 import yaml
-from openai import OpenAI
+from openai import OpenAI, InternalServerError
+from sys import stderr
 from iadev.LLM.Model import Model
 from typing import Dict, List, Optional
 
@@ -23,6 +24,10 @@ class Server:
 
     def get_model(self, model_name: str) -> Model:
         pass
+    
+    def query_chat(self, model: Model, messages: List[tuple]) -> tuple:
+        answer = None
+        return answer
 
     def agent_from_yaml(self, yaml_file: str) -> Agent:
         """
@@ -56,17 +61,28 @@ class PasteurLibreChat(Server):
             self.models[model_name] = None
     
     def get_default_model(self) -> Model:
-        return self.get_model("gemma-3-27b")
+        return self.get_model("mistral-small-2503")
 
     def get_model(self, model_name: str) -> Model:
         if model_name in self.models:
             if self.models[model_name] is None:
                 if self.client is None:
                     raise ValueError("Client is not connected.")
-                self.models[model_name] = Model(f"{model_name}-local", self.client)
+                self.models[model_name] = Model(f"{model_name}-local", self)
             return self.models[model_name]
         else:
             raise ValueError(f"Model {model_name} not found.")
+        
+    def query_chat(self, model, messages):
+        try:
+            response = self.client.chat.completions.create(
+                model=model.model_name,
+                messages=messages
+            )
+            print(response)
+        except InternalServerError as e:
+            print(e, file=stderr)
+        return None
 
 class OllamaLocal(Server):
     def __init__(self) -> None:

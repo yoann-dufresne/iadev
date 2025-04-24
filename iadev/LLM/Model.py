@@ -1,21 +1,15 @@
-from openai import OpenAI
 
 class Model:
-    def __init__(self, model_name: str, client_api: OpenAI):
+    def __init__(self, model_name: str, server):
         self.model_name = model_name
-        self.client_api = client_api
+        self.server = server
 
-    def query(self, msgs: list[object]) -> str:
+    def query(self, msgs: list[object]) -> tuple:
         """
-        Query the model with a given list of messages.
+        Query the server with self model and a given list of messages.
         :param messages: All the exchanges messages. """
-        # Call the OpenAI API to get the response
-        response = self.client_api.chat.completions.create(
-            model=self.model_name,
-            messages=msgs
-        )
-        print(f"{response}")
-        return ""
+        return self.server.query_chat(self, msgs)
 
     def __str__(self):
         return f"Model Name: {self.model_name}"
+    

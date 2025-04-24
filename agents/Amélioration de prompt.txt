@@ -1,0 +1,19 @@
+Amélioration de prompt:
+
+Je suis en train de faire un projet en python qui interagi avec l'API d'openai pour concevoir des logiciels en fonction d'un projet fournis en entrée (un fichier markdown).
+Je veux que ce projet soit effectuer par un ensemble d'agents, chacun avec un modèle de langage et des instructions sur une sous partie du projet. Je veux qu'il y ai un "petit" nombre d'agents (selon le projet il peut y envoir plus ou moins) et un petit nombre de taches bien définies pour chaque agent. Je veux également que si des outils sont absolument nécessaire, il y ait une réclamation de création et de mise à disposition de ces outils.
+
+Pour cela, je souhaite qu'il y ait un agent principal qui lise le projet et qui écrive:
+- les taches a effectuer pour remplir le projet
+    * Description précise et concise de la tache
+    * format de l'entrée
+    * format de la sortie attendue  
+- les agents nécessaires
+    * prompt system de l'agent
+    * prompt user pour l'interation avec l'agent
+- une liste d'outils absolument nécessaires pour résoudre le projet
+    * description précise de l'outil
+    * format d'entrée
+    * format de sortie
+
+Peux tu me faire le prompt le plus précis qui puisse faire en sorte que mon agent réponde à ces besoins ?
